@@ -3,7 +3,8 @@
 pub use tokio;
 
 pub use crate::channel::{
-    BroadcastChannel, Channel, Message, MpscChannel, Receiver, Sender, UnboundedMpscChannel, WatchChannel,
+    BroadcastChannel, Channel, FlumeBoundedMpscChannel, FlumeUnboundedMpscChannel, Message, MpscChannel, Receiver,
+    Sender, UnboundedMpscChannel, WatchChannel,
 };
 pub use crate::context::{Context, DefaultActorId, DefaultContext};
 pub use crate::continuous_stream::ContinuousStream;
