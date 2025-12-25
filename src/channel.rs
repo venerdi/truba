@@ -1,5 +1,7 @@
 pub use self::broadcast::BroadcastChannel;
-pub use self::flume::{FlumeBoundedMpscChannel, FlumeUnboundedMpscChannel};
+pub use self::flume::{
+    FlumeBoundedMpmcChannel, FlumeBoundedMpscChannel, FlumeUnboundedMpmcChannel, FlumeUnboundedMpscChannel,
+};
 pub use self::mpsc::{MpscChannel, UnboundedMpscChannel};
 pub use self::watch::WatchChannel;
 

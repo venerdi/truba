@@ -10,6 +10,11 @@ pub struct FlumeBoundedMpscChannel<T> {
     receiver: Arc<Mutex<Option<flume::Receiver<T>>>>,
 }
 
+pub struct FlumeBoundedMpmcChannel<T> {
+    sender: Arc<Mutex<flume::Sender<T>>>,
+    receiver: Arc<Mutex<flume::Receiver<T>>>,
+}
+
 impl<T> FlumeBoundedMpscChannel<T> {
     pub fn new(buffer: usize) -> Self {
         let (sender, receiver) = flume::bounded(buffer);
@@ -24,6 +29,24 @@ impl<T> FlumeBoundedMpscChannel<T> {
         (
             mem::replace(&mut *self.sender.lock(), sender),
             mem::replace(&mut *self.receiver.lock(), Some(receiver)),
+        )
+    }
+}
+
+impl<T> FlumeBoundedMpmcChannel<T> {
+    pub fn new(buffer: usize) -> Self {
+        let (sender, receiver) = flume::bounded(buffer);
+        Self {
+            sender: Arc::new(Mutex::new(sender)),
+            receiver: Arc::new(Mutex::new(receiver)),
+        }
+    }
+
+    pub fn into_inner(self) -> (flume::Sender<T>, flume::Receiver<T>) {
+        let (sender, receiver) = flume::bounded(1);
+        (
+            mem::replace(&mut *self.sender.lock(), sender),
+            mem::replace(&mut *self.receiver.lock(), receiver),
         )
     }
 }
@@ -49,12 +72,44 @@ impl<T: Send> Channel for FlumeBoundedMpscChannel<T> {
     }
 }
 
+impl<T: Send> Channel for FlumeBoundedMpmcChannel<T> {
+    type Sender = flume::Sender<T>;
+    type Receiver = flume::Receiver<T>;
+
+    fn create() -> Self {
+        Self::new(1024)
+    }
+
+    fn sender(&self) -> Self::Sender {
+        self.sender.lock().clone()
+    }
+
+    fn receiver(&self) -> Self::Receiver {
+        self.receiver.lock().clone()
+    }
+
+    fn is_closed(&self) -> bool {
+        self.sender.lock().is_disconnected()
+    }
+}
+
 pub struct FlumeUnboundedMpscChannel<T> {
     sender: Arc<Mutex<flume::Sender<T>>>,
     receiver: Arc<Mutex<Option<flume::Receiver<T>>>>,
 }
 
+pub struct FlumeUnboundedMpmcChannel<T> {
+    sender: Arc<Mutex<flume::Sender<T>>>,
+    receiver: Arc<Mutex<flume::Receiver<T>>>,
+}
+
 impl<T: Send> Default for FlumeUnboundedMpscChannel<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: Send> Default for FlumeUnboundedMpmcChannel<T> {
     fn default() -> Self {
         Self::new()
     }
@@ -78,6 +133,24 @@ impl<T: Send> FlumeUnboundedMpscChannel<T> {
     }
 }
 
+impl<T: Send> FlumeUnboundedMpmcChannel<T> {
+    pub fn new() -> Self {
+        let (sender, receiver) = flume::unbounded();
+        Self {
+            sender: Arc::new(Mutex::new(sender)),
+            receiver: Arc::new(Mutex::new(receiver)),
+        }
+    }
+
+    pub fn into_inner(self) -> (flume::Sender<T>, flume::Receiver<T>) {
+        let (sender, receiver) = flume::unbounded();
+        (
+            mem::replace(&mut *self.sender.lock(), sender),
+            mem::replace(&mut *self.receiver.lock(), receiver),
+        )
+    }
+}
+
 impl<T: Send> Channel for FlumeUnboundedMpscChannel<T> {
     type Sender = flume::Sender<T>;
     type Receiver = flume::Receiver<T>;
@@ -92,6 +165,27 @@ impl<T: Send> Channel for FlumeUnboundedMpscChannel<T> {
 
     fn receiver(&self) -> Self::Receiver {
         self.receiver.lock().take().unwrap_or_else(|| flume::unbounded().1)
+    }
+
+    fn is_closed(&self) -> bool {
+        self.sender.lock().is_disconnected()
+    }
+}
+
+impl<T: Send> Channel for FlumeUnboundedMpmcChannel<T> {
+    type Sender = flume::Sender<T>;
+    type Receiver = flume::Receiver<T>;
+
+    fn create() -> Self {
+        Self::new()
+    }
+
+    fn sender(&self) -> Self::Sender {
+        self.sender.lock().clone()
+    }
+
+    fn receiver(&self) -> Self::Receiver {
+        self.receiver.lock().clone()
     }
 
     fn is_closed(&self) -> bool {
